@@ -230,3 +230,65 @@ async def procesar_mensaje_whatsapp(instance: str, phone: str, message: str, pus
         
         # Enviar WhatsApp
         await send_whatsapp_message(instance, phone, texto_gpt)
+
+async def procesar_audio_y_responder(instance: str, phone: str, msg_obj: dict, push_name: str):
+    import httpx
+    import base64
+    import tempfile
+    import os
+    
+    # 1. Solicitar el Base64 a Evolution API
+    url = f"{settings.EVOLUTION_URL}/chat/getBase64FromMediaMessage/{instance}"
+    headers = {"apikey": settings.EVOLUTION_API_KEY, "Content-Type": "application/json"}
+    
+    async with httpx.AsyncClient() as http_client:
+        try:
+            res = await http_client.post(url, headers=headers, json=msg_obj, timeout=15.0)
+            if res.status_code >= 400:
+                logger.error(f"Error descargando audio (HTTP {res.status_code}): {res.text}")
+                await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio por un problema de formato. ¿Podrías escribírmelo? ✍️")
+                return
+        except Exception as e:
+            logger.error(f"Excepción descargando audio de Evolution: {e}")
+            await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio. ¿Podrías escribírmelo? ✍️")
+            return
+            
+    data = res.json()
+    b64_string = data.get("base64")
+    if not b64_string:
+        await send_whatsapp_message(instance, phone, "El audio llegó vacío o no se pudo procesar. ¿Me puedes enviar texto?")
+        return
+        
+    # 2. Guardar en archivo temporal para Whisper
+    audio_bytes = base64.b64decode(b64_string)
+    temp_file_path = ""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".ogg") as tmp:
+        tmp.write(audio_bytes)
+        temp_file_path = tmp.name
+        
+    # 3. Mandar a OpenAI Whisper
+    try:
+        with open(temp_file_path, "rb") as audio_file:
+            transcript = await client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file,
+                language="es"
+            )
+            texto_extraido = transcript.text
+            
+        logger.info(f"Audio extraído a texto: '{texto_extraido}'")
+        
+        if not texto_extraido.strip():
+            await send_whatsapp_message(instance, phone, "No alcancé a entender lo que dijiste en el audio. ¿Me podrías indicar por escrito?")
+            return
+            
+        # 4. Pasar al bot como si fuese texto enviándole el mensaje transcrito
+        await procesar_mensaje_whatsapp(instance, phone, texto_extraido, push_name)
+        
+    except Exception as e:
+        logger.error(f"Error OpenAI Whisper: {e}")
+        await send_whatsapp_message(instance, phone, "Hubo un error al transcribir tu audio con la Inteligencia Artificial. 🤕 ¿Podés escribirme?")
+    finally:
+        # Limpiar el archivo temporal para no ocupar disco
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)

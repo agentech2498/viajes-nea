@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, BackgroundTasks
 import logging
-from app.core.bot import procesar_mensaje_whatsapp
+from app.core.bot import procesar_mensaje_whatsapp, procesar_audio_y_responder
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -84,18 +84,32 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
         # --- FIN LÓGICA DE LISTAS ---
 
         texto_recibido = ""
+        es_audio = False
         
         if "conversation" in msg_obj:
             texto_recibido = msg_obj["conversation"]
         elif "extendedTextMessage" in msg_obj:
             texto_recibido = msg_obj["extendedTextMessage"].get("text", "")
+        elif "audioMessage" in msg_obj:
+            es_audio = True
+            
+        push_name = data.get("pushName", "")
+        phone_number = remote_jid.split("@")[0]
+            
+        if es_audio:
+            # Lo pasamos a background para transcribir y luego mandar al NLP
+            background_tasks.add_task(
+                procesar_audio_y_responder,
+                instance=instance,
+                phone=phone_number,
+                msg_obj={"message": msg_obj},
+                push_name=push_name
+            )
+            return {"status": "processing_audio"}
             
         if not texto_recibido:
              return {"status": "no_text"}
 
-        push_name = data.get("pushName", "")
-        phone_number = remote_jid.split("@")[0]
-        
         # Lo pasamos a background para no bloquear a Evolution API (Timeout de respo rápido)
         background_tasks.add_task(
             procesar_mensaje_whatsapp,
