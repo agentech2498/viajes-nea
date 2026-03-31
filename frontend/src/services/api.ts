@@ -132,3 +132,25 @@ export const deleteFixedDestination = async (id: string) => {
     return res.data;
 };
 
+// --- NUEVOS ENDPOINTS: BILLETERA Y MERCADO PAGO ---
+export const getMyBalance = async () => {
+    const res = await api.get("/payments/balance");
+    return res.data;
+};
+
+export const createMpPreference = async (monto: number, descripcion: string) => {
+    const res = await api.post("/payments/create_preference", { monto, descripcion });
+    return res.data;
+};
+
+export const getAllBalances = async () => {
+    const res = await api.get("/payments/admin/balances");
+    return res.data;
+};
+
+export const chargeManualBalance = async (data: { chofer_id: string, monto: number, tipo: string, descripcion: string }) => {
+    const res = await api.post("/payments/admin/charge", data);
+    return res.data;
+};
+
+

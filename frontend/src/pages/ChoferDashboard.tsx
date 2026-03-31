@@ -3,6 +3,7 @@ import { Users, Gift, MapPin, Navigation, Power, CheckCircle2, Navigation2, Sett
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../lib/supabase";
 import { notificarAceptacionViaje, finalizarViaje, notificarLlegadaViaje, cancelarViajeChofer, notificarEmergencia, getActiveTariff, getReservations } from "../services/api";
+import BilleteraChofer from "../components/BilleteraChofer";
 
 // Formula Haversine para calcular distancia en km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -695,59 +696,7 @@ export default function ChoferDashboard() {
 
         {activeTab === "caja" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-             <h2 className="text-xl font-bold mb-4 text-emerald-400 flex items-center gap-2"><Wallet size={20}/> Mi Historial y Caja Bruta</h2>
-             <p className="text-zinc-400 mb-6 text-sm">Registro de los últimos 50 viajes finalizados y cálculo de sumatoria bruta en base a los montos cobrados en efectivo.</p>
-             
-             {loadingCaja ? (
-                 <div className="flex justify-center p-8"><Loader2 className="animate-spin text-zinc-500" size={32} /></div>
-             ) : (
-                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div className="bg-emerald-950/20 border-2 border-emerald-900/50 rounded-2xl p-6 text-center">
-                            <p className="text-xs uppercase tracking-widest text-emerald-500 font-bold mb-1">Recaudación Bruta (Pág)</p>
-                            <h3 className="text-3xl font-black text-emerald-400">
-                               ${historialCaja.filter(v => v.estado === 'finalizado').reduce((acc, v) => acc + Number(v.precio || 0), 0).toFixed(0)}
-                            </h3>
-                        </div>
-                        <div className={`${(configPago?.saldo || 0) < 0 ? 'bg-red-950/20 border-red-900/50' : 'bg-blue-950/20 border-blue-900/50'} border-2 rounded-2xl p-6 text-center`}>
-                            <p className={`text-xs uppercase tracking-widest font-bold mb-1 ${(configPago?.saldo || 0) < 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                {(configPago?.saldo || 0) < 0 ? 'Deuda con Agencia' : 'Saldo a Favor'}
-                            </p>
-                            <h3 className={`text-3xl font-black ${(configPago?.saldo || 0) < 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                               ${Math.abs(configPago?.saldo || 0).toFixed(0)}
-                            </h3>
-                            <p className="text-[10px] text-zinc-500 mt-1 uppercase tracking-tighter">Límite de deuda: ${configPago?.limite_deuda}</p>
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {historialCaja.length === 0 ? (
-                            <p className="text-center text-zinc-500 py-8">Aún no tienes viajes registrados.</p>
-                        ) : (
-                            historialCaja.map(v => (
-                                <div key={v.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                                    <div>
-                                        <p className="text-white font-medium flex items-center gap-2">
-                                            <MapPin size={14} className="text-red-400" />
-                                            {v.origen?.direccion?.substring(0, 30)}...
-                                        </p>
-                                        <p className="text-xs text-zinc-500 mt-1">
-                                            {new Date(v.creado_en).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        {v.estado === 'finalizado' ? (
-                                            <p className="text-green-400 font-bold">+ ${v.precio}</p>
-                                        ) : (
-                                            <p className="text-red-400 font-bold text-xs uppercase bg-red-500/10 px-2 py-1 rounded">Cancelado</p>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                 </>
-             )}
+             <BilleteraChofer />
           </div>
         )}
         

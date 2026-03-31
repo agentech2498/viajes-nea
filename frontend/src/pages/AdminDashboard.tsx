@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Users, Car, Map as MapIcon, Tag, Loader2, CheckCircle2, Gift, Wallet, AlertTriangle, PlusCircle, History, Lock, Edit3, Trash2, Search, Calendar, Zap } from "lucide-react";
 import TariffManager from "../components/TariffManager";
 import ReservationTable from "../components/ReservationTable";
+import RecaudacionAdmin from "../components/RecaudacionAdmin";
 import { createChofer, registrarPagoChofer, updateChofer, deleteChofer } from "../services/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../lib/supabase";
@@ -639,56 +640,7 @@ export default function AdminDashboard() {
 
         {activeTab === "finanzas" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-2"><Wallet size={24} className="text-emerald-500"/> Caja de Conductores</h2>
-                {loadingFinanzas ? <Loader2 className="animate-spin mx-auto" /> : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {choferesFinanzas.map((cf) => {
-                            const isBlocked = cf.saldo < cf.limite_deuda;
-                            return (
-                                <div key={cf.id} className={`bg-zinc-900 border ${isBlocked ? 'border-red-900/50' : 'border-zinc-800'} p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-6`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isBlocked ? 'bg-red-500' : 'bg-zinc-800 text-white'}`}>
-                                            {(cf.usuarios?.nombre || "?").substring(0,1).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-white">{cf.usuarios?.nombre}</h4>
-                                            <p className="text-xs text-zinc-500 uppercase">DNI {cf.dni} • {cf.tipo_pago}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-8">
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-zinc-500 uppercase font-bold">Saldo</p>
-                                            <p className={`text-xl font-black ${cf.saldo < 0 ? 'text-red-400' : 'text-emerald-400'}`}>${(cf.saldo || 0).toFixed(0)}</p>
-                                        </div>
-                                        {isBlocked ? <span className="text-red-500 text-xs font-bold flex items-center gap-1"><Lock size={12}/> BLOQUEADO</span> : <span className="text-emerald-500 text-xs font-bold">ACTIVO</span>}
-                                    </div>
-                                    <button onClick={() => setSelectedChofer(cf)} className="bg-zinc-800 hover:bg-zinc-700 text-white px-6 py-2 rounded-xl flex items-center gap-2">
-                                        <PlusCircle size={18} className="text-emerald-400"/> Cobrar / Recargar
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-                {selectedChofer && (
-                    <div className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-4">
-                        <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-8 max-w-md w-full">
-                            <h3 className="text-xl text-white font-bold mb-4">Registrar Movimiento: {selectedChofer.usuarios?.nombre}</h3>
-                            <form onSubmit={handleRegistrarPago} className="space-y-4">
-                                <select value={tipoMovimiento} onChange={e => setTipoMovimiento(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-white">
-                                    <option value="recarga">Recarga / Adelanto</option>
-                                    <option value="base">Pago de Base Semanal</option>
-                                    <option value="bono">Bonificación</option>
-                                </select>
-                                <input type="number" required min="1" value={montoPago} onChange={e => setMontoPago(Number(e.target.value))} placeholder="Monto ARS" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white text-lg font-bold" />
-                                <div className="flex gap-3">
-                                    <button type="button" onClick={() => setSelectedChofer(null)} className="flex-1 bg-zinc-800 text-zinc-400 py-3 rounded-xl">Cerrar</button>
-                                    <button type="submit" disabled={savingPago} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold">{savingPago ? "Guardando..." : "Confirmar"}</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
+                <RecaudacionAdmin />
             </div>
         )}
 
