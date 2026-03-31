@@ -1,0 +1,27 @@
+# General OSX / IDE
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Backend (Python)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+backend/.env
+
+# Frontend (Node / React / Vite)
+node_modules/
+frontend/node_modules/
+dist/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env.local
