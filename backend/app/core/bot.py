@@ -109,8 +109,14 @@ async def procesar_mensaje_whatsapp(instance: str, phone: str, message: str, pus
     # Agregamos el mensaje del usuario al historial para enviarlo al bot
     historial.append({"role": "user", "content": message})
     
-    # Preparar envío al LLM
-    messages_payload = [{"role": "system", "content": SYSTEM_PROMPT}] + historial
+    # 0. Obtener fecha actual para dar contexto al Bot
+    from datetime import datetime
+    ahora = datetime.now()
+    fecha_hoy = ahora.strftime("%Y-%m-%d %H:%M")
+    
+    # Preparar envío al LLM con la fecha de hoy inyectada
+    system_ctx = f"{SYSTEM_PROMPT}\n\nCONTEXTO TEMPORAL CRÍTICO: Hoy es {fecha_hoy}. Asegúrate de usar este año para todas las reservas."
+    messages_payload = [{"role": "system", "content": system_ctx}] + historial
 
     # 2. Llamada a la Inteligencia Artificial
     try:
