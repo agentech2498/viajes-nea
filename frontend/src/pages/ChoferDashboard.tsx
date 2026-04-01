@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../lib/supabase";
 import { notificarAceptacionViaje, finalizarViaje, notificarLlegadaViaje, cancelarViajeChofer, notificarEmergencia, getActiveTariff, getReservations } from "../services/api";
 import BilleteraChofer from "../components/BilleteraChofer";
+import WeatherWidget from "../components/WeatherWidget";
 
 // Formula Haversine para calcular distancia en km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -448,22 +449,25 @@ export default function ChoferDashboard() {
       
       {/* HEADER PREMIUM */}
       <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-8 border-b border-white/5 gap-6">
-          <div>
+          <div className="w-full sm:w-auto">
             <div className="flex items-center gap-3">
                <div className={`p-2 rounded-xl ${isOnline ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-400'} transition-colors duration-500`}>
-                  <Zap size={24} weight="fill" />
+                  <Zap size={24} fill="currentColor" />
                </div>
                <h1 className="text-4xl font-black text-white tracking-tighter">
                   Viajes <span className={isOnline ? "text-green-500" : "text-zinc-500"}>NEA</span>
                </h1>
             </div>
-            <p className="text-xs font-bold text-zinc-500 mt-2 tracking-[0.2em] uppercase ml-11">{user?.email}</p>
+            <p className="text-xs font-bold text-zinc-500 mt-2 tracking-[0.2em] max-w-[200px] truncate uppercase sm:ml-11">{user?.email}</p>
+            <div className="sm:ml-10 w-full animate-in fade-in slide-in-from-left-4 duration-700">
+               <WeatherWidget />
+            </div>
           </div>
           
           <button 
             onClick={isBlocked ? () => alert("Tu cuenta está bloqueada por deuda. Debes saldar con administración para volver online.") : toggleService}
             className={`
-              relative group flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm tracking-widest transition-all duration-300 active:scale-95 overflow-hidden
+              relative group flex w-full sm:w-auto justify-center items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm tracking-widest transition-all duration-300 active:scale-95 overflow-hidden
               ${isBlocked 
                 ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed opacity-50' 
                 : (isOnline 
