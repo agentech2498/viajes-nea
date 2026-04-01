@@ -628,7 +628,7 @@ export default function ChoferDashboard() {
                     <div className="flex flex-col gap-3">
                         {viajeActivo.origen?.lat && viajeActivo.destino?.lat && (
                             <a 
-                                href={`https://www.google.com/maps/dir/?api=1&origin=${viajeActivo.origen.lat},${viajeActivo.origen.lng}&destination=${viajeActivo.destino.lat},${viajeActivo.destino.lng}`}
+                                href={`https://www.google.com/maps/dir/?api=1&origin=${viajeActivo.origen.lat},${viajeActivo.origen.lng}&destination=${viajeActivo.destino.lat},${viajeActivo.destino.lng}&travelmode=driving`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="w-full bg-blue-600 hover:bg-blue-500 flex justify-center items-center gap-2 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-500/20"
