@@ -26,6 +26,18 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
     }
     """
     try:
+        from app.core.config import settings
+        # Validar el Webhook Secret (Si está configurado en .env)
+        if settings.WEBHOOK_SECRET:
+            # Soportar que el secreto venga por Header (x-webhook-secret) o por URL (?secret=Miclave)
+            header_secret = request.headers.get("x-webhook-secret")
+            query_secret = request.query_params.get("secret")
+            
+            # Chequeamos si alguno de los dos lados tiene la clave correcta
+            if (not header_secret or header_secret != settings.WEBHOOK_SECRET) and (not query_secret or query_secret != settings.WEBHOOK_SECRET):
+                logger.warning("Fallo de autenticación en Webhook: Secreto inválido omitido")
+                return {"status": "unauthorized"}
+
         body = await request.json()
         logger.info(f"Webhook recibido: {body}")
         
@@ -102,7 +114,7 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
                 procesar_audio_y_responder,
                 instance=instance,
                 phone=phone_number,
-                msg_obj={"message": msg_obj},
+                msg_obj={"message": data}, # Pasa el objeto `data` completo (incluye 'key') requerido por Evolution API para Base64
                 push_name=push_name
             )
             return {"status": "processing_audio"}

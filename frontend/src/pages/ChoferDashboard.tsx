@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../lib/supabase";
 import { notificarAceptacionViaje, finalizarViaje, notificarLlegadaViaje, cancelarViajeChofer, notificarEmergencia, getActiveTariff, getReservations } from "../services/api";
 import BilleteraChofer from "../components/BilleteraChofer";
+import WeatherWidget from "../components/WeatherWidget";
 
 // Formula Haversine para calcular distancia en km
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
@@ -430,80 +431,117 @@ export default function ChoferDashboard() {
   };
 
   return (
-    <div className={`p-6 rounded-3xl shadow-2xl border w-full max-w-3xl mx-auto animate-in fade-in zoom-in duration-500 transition-colors ${isOnline ? 'bg-zinc-900 border-green-500/30' : 'bg-neutral-900 border-neutral-800'}`}>
+    <div className={`relative p-6 sm:p-8 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] border backdrop-blur-xl w-full max-w-3xl mx-auto animate-in fade-in zoom-in-95 duration-700 transition-all ${isOnline ? 'bg-zinc-900/90 border-green-500/30 ring-1 ring-green-500/10' : 'bg-neutral-900/90 border-white/5'}`}>
+      
+      {/* DECORACIÓN FONDO (Brillo sutil) */}
+      <div className={`absolute -top-24 -left-24 w-64 h-64 blur-[120px] rounded-full pointer-events-none transition-opacity duration-1000 ${isOnline ? 'bg-green-500/10 opacity-100' : 'bg-white/5 opacity-0'}`} />
       
       {isBlocked && (
-          <div className="mb-6 bg-red-600 text-white p-4 rounded-2xl flex items-center gap-3 animate-pulse shadow-lg shadow-red-500/20 border-2 border-red-400">
-              <AlertTriangle size={32} className="flex-shrink-0" />
+          <div className="relative mb-8 bg-red-600 text-white p-5 rounded-3xl flex items-center gap-4 animate-pulse shadow-[0_0_30px_rgba(220,38,38,0.3)] border-2 border-red-400/50 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] animate-[shine_2s_infinite]" />
+              <AlertTriangle size={40} className="flex-shrink-0" />
               <div>
-                  <p className="font-black text-lg leading-tight">CUENTA BLOQUEADA POR DEUDA</p>
-                  <p className="text-sm opacity-90 font-medium">Tu saldo de ${configPago?.saldo.toFixed(0)} superó el límite de ${configPago?.limite_deuda}. Contacta a la administración.</p>
+                  <p className="font-black text-xl leading-tight tracking-tight uppercase">Cuenta Bloqueada</p>
+                  <p className="text-sm opacity-90 font-medium">Límite de deuda superado (${configPago?.saldo.toFixed(0)}). Regulariza tu situación.</p>
               </div>
           </div>
       )}
       
-      {/* HEADER ACTIVO */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-6 border-b border-neutral-800 gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-white flex items-center gap-2 tracking-tight">
-                Viajes NEA <span className="text-zinc-500 font-light">Chofer</span>
-            </h1>
-            <p className="text-sm text-zinc-400 mt-1">{user?.email}</p>
+      {/* HEADER PREMIUM */}
+      <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 pb-8 border-b border-white/5 gap-6">
+          <div className="w-full sm:w-auto">
+            <div className="flex items-center gap-3">
+               <div className={`p-2 rounded-xl ${isOnline ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-400'} transition-colors duration-500`}>
+                  <Zap size={24} fill="currentColor" />
+               </div>
+               <h1 className="text-4xl font-black text-white tracking-tighter">
+                  Viajes <span className={isOnline ? "text-green-500" : "text-zinc-500"}>NEA</span>
+               </h1>
+            </div>
+            <p className="text-xs font-bold text-zinc-500 mt-2 tracking-[0.2em] max-w-[200px] truncate uppercase sm:ml-11">{user?.email}</p>
+            <div className="sm:ml-10 w-full animate-in fade-in slide-in-from-left-4 duration-700">
+               <WeatherWidget />
+            </div>
           </div>
           
           <button 
             onClick={isBlocked ? () => alert("Tu cuenta está bloqueada por deuda. Debes saldar con administración para volver online.") : toggleService}
-            className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all active:scale-95 ${isBlocked ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed opacity-50 grayscale' : (isOnline ? 'bg-green-500 text-black shadow-green-500/20 hover:bg-green-400' : 'bg-zinc-100 text-black hover:bg-white')}`}
+            className={`
+              relative group flex w-full sm:w-auto justify-center items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm tracking-widest transition-all duration-300 active:scale-95 overflow-hidden
+              ${isBlocked 
+                ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed opacity-50' 
+                : (isOnline 
+                    ? 'bg-green-500 text-black shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:bg-green-400 hover:shadow-green-400/60' 
+                    : 'bg-white text-black hover:bg-zinc-200 shadow-xl shadow-white/5')}
+            `}
           >
-              <Power size={18} /> 
+              <Power size={20} className={isOnline ? "animate-pulse" : ""} /> 
               {isOnline ? "FINALIZAR TURNO" : "COMENZAR TURNO"}
           </button>
       </div>
       
       {locationError && (
-          <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-500 px-4 py-3 rounded-xl text-sm font-medium">
+          <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-500 px-5 py-4 rounded-2xl text-sm font-bold flex items-center gap-3 animate-in slide-in-from-top-2">
+              <XCircle size={20} />
               {locationError}
           </div>
       )}
 
       {acceptError && (
-          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in">
+          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 px-5 py-4 rounded-2xl text-sm font-bold flex items-center gap-3 animate-in zoom-in-95">
+              <AlertTriangle size={20} />
               {acceptError}
           </div>
       )}
 
-      {/* ESTADO VISUAL */}
-      <div className={`mb-8 p-4 flex items-center gap-4 rounded-xl border transition-colors ${isOnline ? 'bg-green-950/20 border-green-500/30 text-green-400' : 'bg-zinc-950/50 border-zinc-800 text-zinc-500'}`}>
-          <div className="relative flex h-4 w-4">
-            {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-            <span className={`relative inline-flex rounded-full h-4 w-4 ${isOnline ? 'bg-green-500' : 'bg-zinc-600'}`}></span>
+      {/* ESTADO VISUAL LIVE */}
+      <div className={`relative mb-10 p-5 flex items-center gap-4 rounded-3xl border transition-all duration-700 ${isOnline ? 'bg-green-500/5 border-green-500/20 text-green-400 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]' : 'bg-zinc-950/30 border-white/5 text-zinc-500'}`}>
+          <div className="relative flex h-5 w-5">
+            {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-40"></span>}
+            <span className={`relative inline-flex rounded-full h-5 w-5 border-2 ${isOnline ? 'bg-green-500 border-green-400 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-zinc-700 border-zinc-600'}`}></span>
           </div>
-          <p className="font-semibold">{isOnline ? "Transmitiendo posición en vivo. Esperando viajes..." : "Módulo GPS Apagado. Pulsa 'Comenzar Turno' para recibir viajes."}</p>
+          <p className="font-bold text-sm tracking-tight">{isOnline ? "CONECTADO: TRANSMITIENDO SEÑAL GPS EN VIVO" : "DESCONECTADO: SEÑAL DE RADAR INACTIVA"}</p>
       </div>
 
-      {/* TABS NAVEGACIÓN */}
-      <div className="flex gap-4 mb-6">
-        <button onClick={() => setActiveTab("rutas")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ${activeTab === 'rutas' ? (isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-500/20' : 'bg-zinc-700 text-white') : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Navigation size={18} /> Solicitudes Activas {viajesDisponibles.length > 0 && isOnline && <span className="p-1 px-2.5 bg-red-500 rounded-full text-xs animate-bounce">{viajesDisponibles.length}</span>}
-        </button>
-        <button onClick={() => setActiveTab("reservas")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ${activeTab === 'reservas' ? 'bg-zinc-700 text-white' : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Calendar size={18} /> Reservas Futuras
-        </button>
-        <button onClick={() => setActiveTab("caja")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ${activeTab === 'caja' ? 'bg-zinc-700 text-white' : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Wallet size={18} /> Mi Caja
-        </button>
-        <button onClick={() => setActiveTab("tarifas")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ${activeTab === 'tarifas' ? 'bg-zinc-700 text-white' : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Zap size={18} /> Tarifario
-        </button>
-        <button onClick={() => setActiveTab("premios")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ${activeTab === 'premios' ? (isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-500/20' : 'bg-zinc-700 text-white') : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Gift size={18} /> Recompensas
-        </button>
-        <button onClick={() => setActiveTab("ajustes")} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors font-bold ml-auto ${activeTab === 'ajustes' ? 'bg-zinc-700 text-white' : 'bg-transparent text-zinc-500 hover:bg-zinc-800 hover:text-white'}`}>
-          <Settings size={18} /> Ajustes
-        </button>
+      {/* GRID DE NAVEGACIÓN PREMIUM (Resolución de Ajustes Fuera del Marco) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+        {[
+          { id: 'rutas', icon: Navigation, label: 'Solicitudes', badge: isOnline && viajesDisponibles.length > 0 ? viajesDisponibles.length : 0, color: 'text-green-400' },
+          { id: 'reservas', icon: Calendar, label: 'Reservas', color: 'text-blue-400' },
+          { id: 'caja', icon: Wallet, label: 'Mi Caja', color: 'text-emerald-400' },
+          { id: 'tarifas', icon: Zap, label: 'Tarifario', color: 'text-yellow-400' },
+          { id: 'premios', icon: Gift, label: 'Premios', color: 'text-purple-400' },
+          { id: 'ajustes', icon: Settings, label: 'Ajustes', color: 'text-zinc-400' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`
+              relative flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-300 group overflow-hidden
+              ${activeTab === tab.id 
+                ? 'bg-zinc-800/80 border-green-500/50 shadow-[0_15px_30px_-10px_rgba(34,197,94,0.15)] ring-1 ring-green-500/20 transform scale-[1.02]' 
+                : 'bg-zinc-900/40 border-white/5 hover:bg-zinc-800/40 hover:border-white/10'}
+            `}
+          >
+            <tab.icon size={26} className={`mb-2.5 transition-all duration-300 ${activeTab === tab.id ? tab.color : 'text-zinc-500 group-hover:text-zinc-300 group-hover:scale-110'}`} />
+            <span className={`text-[10px] font-black uppercase tracking-[0.2em] transition-colors ${activeTab === tab.id ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'}`}>{tab.label}</span>
+            
+            {tab.badge > 0 && (
+              <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/20 animate-bounce border-2 border-zinc-900">
+                {tab.badge}
+              </span>
+            )}
+            
+            {activeTab === tab.id && (
+              <div className="absolute inset-x-4 bottom-2 h-1 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+            )}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-zinc-950/50 p-6 rounded-2xl border border-zinc-800/80">
+      <div className="relative bg-zinc-950/40 backdrop-blur-sm p-6 sm:p-8 rounded-[2rem] border border-white/5 shadow-inner transition-all duration-500">
+        {/* LUZ DE FONDO PARA EL CONTENIDO */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/5 to-transparent rounded-tr-[2rem] pointer-events-none" />
         {activeTab === "tarifas" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <h2 className="text-xl font-bold mb-4 text-blue-400 flex items-center gap-2"><Zap size={20}/> Tarifario Oficial IA</h2>
@@ -590,7 +628,7 @@ export default function ChoferDashboard() {
                     <div className="flex flex-col gap-3">
                         {viajeActivo.origen?.lat && viajeActivo.destino?.lat && (
                             <a 
-                                href={`https://www.google.com/maps/dir/?api=1&origin=${viajeActivo.origen.lat},${viajeActivo.origen.lng}&destination=${viajeActivo.destino.lat},${viajeActivo.destino.lng}`}
+                                href={`https://www.google.com/maps/dir/?api=1&origin=${viajeActivo.origen.lat},${viajeActivo.origen.lng}&destination=${viajeActivo.destino.lat},${viajeActivo.destino.lng}&travelmode=driving`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="w-full bg-blue-600 hover:bg-blue-500 flex justify-center items-center gap-2 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-500/20"
@@ -809,9 +847,10 @@ export default function ChoferDashboard() {
               onClick={handleSOS}
               disabled={sosLoading}
               title="Emitir Alerta SOS a la Central"
-              className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[999] bg-red-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.7)] hover:bg-red-500 hover:scale-110 active:scale-95 transition-all outline-none animate-pulse flex items-center justify-center disabled:opacity-50 border-2 border-red-400"
+              className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-[999] group bg-red-600 text-white p-5 rounded-full shadow-[0_0_30px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:scale-110 active:scale-95 transition-all outline-none flex items-center justify-center disabled:opacity-50 border-2 border-red-400/50"
           >
-              <AlertTriangle size={32} />
+              <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20 group-hover:opacity-40" />
+              <AlertTriangle size={32} className="relative z-10" />
           </button>
       )}
     </div>
