@@ -26,6 +26,16 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
     }
     """
     try:
+        from app.core.config import settings
+        # Validar el Webhook Secret (Si está configurado en .env)
+        if settings.WEBHOOK_SECRET:
+            # Evolution puede configurarse con webhook_global_headers, o enviar un auth header.
+            # Verificamos si envió secret-key o authorization
+            header_secret = request.headers.get("x-webhook-secret")
+            if not header_secret or header_secret != settings.WEBHOOK_SECRET:
+                logger.warning("Fallo de autenticación en Webhook: x-webhook-secret inválido omitido")
+                return {"status": "unauthorized"}
+
         body = await request.json()
         logger.info(f"Webhook recibido: {body}")
         
@@ -102,7 +112,7 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
                 procesar_audio_y_responder,
                 instance=instance,
                 phone=phone_number,
-                msg_obj={"message": msg_obj},
+                msg_obj={"message": data}, # Pasa el objeto `data` completo (incluye 'key') requerido por Evolution API para Base64
                 push_name=push_name
             )
             return {"status": "processing_audio"}

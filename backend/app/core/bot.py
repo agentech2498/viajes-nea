@@ -77,9 +77,21 @@ TOOLS = [
     }
 ]
 
-SYSTEM_PROMPT = """Eres el operador virtual inteligente de la remisería "Viajes NEA".
-Tu trabajo es atender por WhatsApp con tono amable, estilo correntino/chaqueño (cálido).
-Nuevas capacidades:
+SYSTEM_PROMPT = """Eres un asistente virtual inteligente que responde consultas de clientes por WhatsApp para la remisería "Viajes NEA".
+Tu trabajo es atender con un tono amigable, profesional y estilo correntino/chaqueño (cálido).
+
+IMPORTANTE:
+* El usuario puede enviar audios que ya fueron convertidos a texto.
+* SIEMPRE debes responder en formato de texto.
+* NUNCA respondas con audios ni sugieras enviar audios.
+* Responde de forma clara, breve y útil.
+
+REGLAS:
+* Si el mensaje es confuso, pide aclaración.
+* No inventes información.
+* Mantén respuestas simples y directas.
+
+HABILIDADES DEL SISTEMA:
 1. Si el cliente pregunta precios generales o dice "tarifario/lista de precios", llama a `mostrar_tarifario`.
 2. Si pregunta cuánto sale de un lugar a otro, llama a `consultar_precio_puntual` (solo asegúrate de tener A y B).
 3. Si quiere viajar YA MISMO, pide origen y destino (si no tienes el precio, calcula con consultar_precio_puntual primero). Si confirma viajar YA, llama a `confirmar_viaje_inmediato`.
@@ -107,7 +119,7 @@ async def procesar_mensaje_whatsapp(instance: str, phone: str, message: str, pus
         }).execute()
 
     # Agregamos el mensaje del usuario al historial para enviarlo al bot
-    historial.append({"role": "user", "content": message})
+    historial.append({"role": "user", "content": f"MENSAJE DEL CLIENTE:\n{message}"})
     
     # 0. Obtener fecha actual para dar contexto al Bot
     from datetime import datetime
@@ -243,24 +255,37 @@ async def procesar_audio_y_responder(instance: str, phone: str, msg_obj: dict, p
     import tempfile
     import os
     
-    # 1. Solicitar el Base64 a Evolution API
-    url = f"{settings.EVOLUTION_URL}/chat/getBase64FromMediaMessage/{instance}"
-    headers = {"apikey": settings.EVOLUTION_API_KEY, "Content-Type": "application/json"}
+    # 1. Intentar extraer directo del payload (si webhook_base64 está activo)
+    data = msg_obj.get("message", {})
+    b64_string = None
     
-    async with httpx.AsyncClient() as http_client:
-        try:
-            res = await http_client.post(url, headers=headers, json=msg_obj, timeout=15.0)
-            if res.status_code >= 400:
-                logger.error(f"Error descargando audio (HTTP {res.status_code}): {res.text}")
-                await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio por un problema de formato. ¿Podrías escribírmelo? ✍️")
+    if "base64" in data:
+        b64_string = data["base64"]
+    elif "message" in data and "base64" in data["message"]:
+        b64_string = data["message"]["base64"]
+    elif "message" in data and "audioMessage" in data["message"] and "base64" in data["message"]["audioMessage"]:
+        b64_string = data["message"]["audioMessage"]["base64"]
+
+    # 2. Si no viene en el webhook, solicitar a Evolution API
+    if not b64_string:
+        url = f"{settings.EVOLUTION_URL}/chat/getBase64FromMediaMessage/{instance}"
+        headers = {"apikey": settings.EVOLUTION_API_KEY, "Content-Type": "application/json"}
+        
+        async with httpx.AsyncClient() as http_client:
+            try:
+                # msg_obj ya viene estructurado como {"message": data} desde webhooks.py, que es lo que Evolution requiere
+                res = await http_client.post(url, headers=headers, json=msg_obj, timeout=15.0)
+                if res.status_code >= 400:
+                    logger.error(f"Error descargando audio (HTTP {res.status_code}): {res.text}")
+                    await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio por un problema de formato. ¿Podrías escribírmelo? ✍️")
+                    return
+                resp_json = res.json()
+                b64_string = resp_json.get("base64")
+            except Exception as e:
+                logger.error(f"Excepción descargando audio de Evolution: {e}")
+                await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio. ¿Podrías escribírmelo? ✍️")
                 return
-        except Exception as e:
-            logger.error(f"Excepción descargando audio de Evolution: {e}")
-            await send_whatsapp_message(instance, phone, "Lo siento, no pude escuchar tu audio. ¿Podrías escribírmelo? ✍️")
-            return
-            
-    data = res.json()
-    b64_string = data.get("base64")
+
     if not b64_string:
         await send_whatsapp_message(instance, phone, "El audio llegó vacío o no se pudo procesar. ¿Me puedes enviar texto?")
         return
