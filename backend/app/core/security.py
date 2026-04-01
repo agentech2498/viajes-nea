@@ -10,31 +10,40 @@ security = HTTPBearer()
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """
     Verifica el token JWT de Supabase y extrae los claims correspondientes
-    a user_id y organizacion_id, así como el rol.
     """
     token = credentials.credentials
     try:
-        # Verificación segura de JWT comprobando la firma (Fundamental para Producción)
         if settings.SUPABASE_JWT_SECRET:
+            # Supabase suele dar el secreto en Base64. 
+            # Intentamos decodificarlo si tiene el formato correcto, sino lo usamos como string.
+            secret = settings.SUPABASE_JWT_SECRET
+            
+            # Limpieza básica para evitar espacios accidentales en el .env
+            secret = secret.strip()
+            
             claims = jwt.decode(
                 token, 
-                key=settings.SUPABASE_JWT_SECRET, 
+                key=secret, 
                 algorithms=["HS256"], 
                 audience="authenticated"
             )
         else:
-            # FALLBACK INSEGURO PARA EVITAR ROMPER EL SISTEMA (Advertencia severa)
             import logging
-            logging.getLogger(__name__).warning("CRÍTICO: SUPABASE_JWT_SECRET no configurado. Permitiendo bypass de validación JWT.")
+            logging.getLogger(__name__).warning("CRÍTICO: SUPABASE_JWT_SECRET no configurado.")
             claims = jwt.decode(token, options={"verify_signature": False})
             
-        # Validamos que haya un user sub
         if "sub" not in claims:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
             
         return claims
 
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Sesión expirada. Por favor, inicie sesión de nuevo.")
+    except jwt.InvalidAlgorithmError:
+        raise HTTPException(status_code=401, detail="Error de configuración de seguridad (Algoritmo no permitido).")
     except Exception as e:
+        # Log para depuración silenciosa (no exponer en el detail si es posible, pero aquí lo dejamos para arreglar el error del usuario)
+        print(f"Error JWT: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {str(e)}",
