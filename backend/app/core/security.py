@@ -1,8 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-import base64
-from typing import Dict, Any, Union
+from typing import Dict, Any
 
 from app.core.config import settings
 
@@ -10,56 +9,41 @@ security = HTTPBearer()
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
     """
-    Verifica el token JWT de Supabase y extrae los claims correspondientes
+    Verifica el token JWT de Supabase usando HMAC-SHA256 (HS256).
+    El JWT_SECRET de Supabase es un string plano — NO se decodifica en base64.
     """
     token = credentials.credentials
     try:
         if settings.SUPABASE_JWT_SECRET:
-            # Limpiamos espacios y comillas accidentales
-            secret = settings.SUPABASE_JWT_SECRET.strip().replace('"', '').replace("'", "")
-            
-            # DEPURACIÓN: Ver qué algoritmo trae realmente el token
-            try:
-                header = jwt.get_unverified_header(token)
-                alg_recibido = header.get("alg")
-                print(f"DEBUG JWT - Algoritmo detectado: {alg_recibido}")
-            except Exception as e:
-                print(f"DEBUG JWT - Error leyendo header: {e}")
-                alg_recibido = "HS256"
+            # Limpiar comillas y espacios accidentales (fix del commit anterior)
+            secret: str = settings.SUPABASE_JWT_SECRET.strip().strip('"').strip("'")
 
-            try:
-                # Intentamos decodificarlo. Si no es base64, b64decode levantará un error.
-                # Añadimos padding extra si hiciera falta (seguridad ante cortes accidentales)
-                # padding = '=' * (4 - len(secret) % 4)
-                key: Union[bytes, str] = base64.b64decode(secret)
-            except Exception:
-                # Si no era base64, lo usamos directamente como string
-                key = secret
-            
-            # Permitimos tanto HS256 como RS256 por si acaso Supabase cambió la config
+            # Supabase siempre firma con HS256. Usar SÓLO ese algoritmo
+            # evita el "alg not allowed" de PyJWT cuando el tipo de clave
+            # no coincide con el algoritmo declarado en la lista.
             claims = jwt.decode(
-                token, 
-                key=key, 
-                algorithms=["HS256", "RS256", "HS384", "HS512"], 
+                token,
+                key=secret,
+                algorithms=["HS256"],
                 audience="authenticated"
             )
         else:
             import logging
             logging.getLogger(__name__).warning("CRÍTICO: SUPABASE_JWT_SECRET no configurado.")
             claims = jwt.decode(token, options={"verify_signature": False})
-            
+
         if "sub" not in claims:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
-            
+
         return claims
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Sesión expirada. Por favor, inicie sesión de nuevo.")
     except jwt.InvalidAlgorithmError as e:
-        # Aquí exponemos un poco más de info para arreglarlo rápido
         raise HTTPException(status_code=401, detail=f"Error de algoritmo: {str(e)}. Verifique su SUPABASE_JWT_SECRET.")
+    except jwt.DecodeError as e:
+        raise HTTPException(status_code=401, detail=f"Token inválido: {str(e)}")
     except Exception as e:
-        # Log para depuración silenciosa
         print(f"Error JWT Crítico: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
