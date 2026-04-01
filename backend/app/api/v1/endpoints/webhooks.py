@@ -29,11 +29,13 @@ async def evolution_webhook(request: Request, background_tasks: BackgroundTasks)
         from app.core.config import settings
         # Validar el Webhook Secret (Si está configurado en .env)
         if settings.WEBHOOK_SECRET:
-            # Evolution puede configurarse con webhook_global_headers, o enviar un auth header.
-            # Verificamos si envió secret-key o authorization
+            # Soportar que el secreto venga por Header (x-webhook-secret) o por URL (?secret=Miclave)
             header_secret = request.headers.get("x-webhook-secret")
-            if not header_secret or header_secret != settings.WEBHOOK_SECRET:
-                logger.warning("Fallo de autenticación en Webhook: x-webhook-secret inválido omitido")
+            query_secret = request.query_params.get("secret")
+            
+            # Chequeamos si alguno de los dos lados tiene la clave correcta
+            if (not header_secret or header_secret != settings.WEBHOOK_SECRET) and (not query_secret or query_secret != settings.WEBHOOK_SECRET):
+                logger.warning("Fallo de autenticación en Webhook: Secreto inválido omitido")
                 return {"status": "unauthorized"}
 
         body = await request.json()
