@@ -15,7 +15,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     token = credentials.credentials
     try:
         if settings.SUPABASE_JWT_SECRET:
-            secret = settings.SUPABASE_JWT_SECRET.strip()
+            # Limpiamos espacios y comillas accidentales
+            secret = settings.SUPABASE_JWT_SECRET.strip().replace('"', '').replace("'", "")
             
             # DEPURACIÓN: Ver qué algoritmo trae realmente el token
             try:
