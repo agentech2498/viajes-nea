@@ -7,40 +7,24 @@ from app.core.config import settings
 
 security = HTTPBearer()
 
+# En tu archivo de seguridad
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    """
-    Verifica el token JWT de Supabase y extrae los claims correspondientes
-    a user_id y organizacion_id, así como el rol.
-    """
     token = credentials.credentials
     try:
-        # La clave secreta de JWT de Supabase es la misma que está en el panel
-        # En Supabase por default es el `jwt_secret`, pero podemos usar la verifyción normal si tenemos la clave,
-        # o delegarlo al SDK auth.get_user().
-        # Usaremos el Supabase Auth SDK para mayor fiabilidad, esto asume que en auth_service lo inyectamos.
-        
-        # Alternativamente, si en supabase pasamos un JWT:
-        # payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
-        # Por seguridad y simplicidad, exigiremos que se pase un token válido.
-        # Aquí mockeamos la extracción para evitar hardcodear el secret de firma si solo validamos con Client.
-        
-        # Para esta implementación, parseamos el JWT (Sin firma completa para simplificar el middleware si corre interno
-        # o se requiere el secret JWT explícito del .env, el cual NO fue provisto en los datos iniciales, solo keys).
-        
-        unverified_claims = jwt.decode(token, options={"verify_signature": False})
-        
-        # Validamos que haya un user sub
-        if "sub" not in unverified_claims:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-            
-        return unverified_claims
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token verification failed: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
+        # Usamos el SECRET que agregamos a settings
+        # IMPORTANTE: Asegúrate de usar el de la pestaña "Legacy" de Supabase
+        payload = jwt.decode(
+            token, 
+            settings.SUPABASE_JWT_SECRET, 
+            algorithms=["HS256"], 
+            audience="authenticated"
         )
+        return payload
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Token inválido: {str(e)}")
 
 from app.db.supabase import supabase
 
