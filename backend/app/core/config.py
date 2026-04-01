@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str | None = None
     WEBHOOK_SECRET: str | None = None
 
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 settings = Settings()

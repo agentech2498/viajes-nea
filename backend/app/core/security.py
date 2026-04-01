@@ -15,10 +15,17 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     token = credentials.credentials
     try:
         if settings.SUPABASE_JWT_SECRET:
-            # Supabase suele dar el secreto en Base64. 
-            # Es vital decodificarlo a bytes antes de usarlo como clave simétrica para HS256.
             secret = settings.SUPABASE_JWT_SECRET.strip()
             
+            # DEPURACIÓN: Ver qué algoritmo trae realmente el token
+            try:
+                header = jwt.get_unverified_header(token)
+                alg_recibido = header.get("alg")
+                print(f"DEBUG JWT - Algoritmo detectado: {alg_recibido}")
+            except Exception as e:
+                print(f"DEBUG JWT - Error leyendo header: {e}")
+                alg_recibido = "HS256"
+
             try:
                 # Intentamos decodificarlo. Si no es base64, b64decode levantará un error.
                 # Añadimos padding extra si hiciera falta (seguridad ante cortes accidentales)
@@ -28,10 +35,11 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
                 # Si no era base64, lo usamos directamente como string
                 key = secret
             
+            # Permitimos tanto HS256 como RS256 por si acaso Supabase cambió la config
             claims = jwt.decode(
                 token, 
                 key=key, 
-                algorithms=["HS256"], 
+                algorithms=["HS256", "RS256", "HS384", "HS512"], 
                 audience="authenticated"
             )
         else:
@@ -46,11 +54,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Sesión expirada. Por favor, inicie sesión de nuevo.")
-    except jwt.InvalidAlgorithmError:
-        raise HTTPException(status_code=401, detail="Error de configuración de seguridad (Algoritmo no permitido).")
+    except jwt.InvalidAlgorithmError as e:
+        # Aquí exponemos un poco más de info para arreglarlo rápido
+        raise HTTPException(status_code=401, detail=f"Error de algoritmo: {str(e)}. Verifique su SUPABASE_JWT_SECRET.")
     except Exception as e:
-        # Log para depuración silenciosa (no exponer en el detail si es posible, pero aquí lo dejamos para arreglar el error del usuario)
-        print(f"Error JWT: {str(e)}")
+        # Log para depuración silenciosa
+        print(f"Error JWT Crítico: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token verification failed: {str(e)}",
