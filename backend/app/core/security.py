@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-from typing import Dict, Any
+import base64
+from typing import Dict, Any, Union
 
 from app.core.config import settings
 
@@ -15,15 +16,21 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     try:
         if settings.SUPABASE_JWT_SECRET:
             # Supabase suele dar el secreto en Base64. 
-            # Intentamos decodificarlo si tiene el formato correcto, sino lo usamos como string.
-            secret = settings.SUPABASE_JWT_SECRET
+            # Es vital decodificarlo a bytes antes de usarlo como clave simétrica para HS256.
+            secret = settings.SUPABASE_JWT_SECRET.strip()
             
-            # Limpieza básica para evitar espacios accidentales en el .env
-            secret = secret.strip()
+            try:
+                # Intentamos decodificarlo. Si no es base64, b64decode levantará un error.
+                # Añadimos padding extra si hiciera falta (seguridad ante cortes accidentales)
+                # padding = '=' * (4 - len(secret) % 4)
+                key: Union[bytes, str] = base64.b64decode(secret)
+            except Exception:
+                # Si no era base64, lo usamos directamente como string
+                key = secret
             
             claims = jwt.decode(
                 token, 
-                key=secret, 
+                key=key, 
                 algorithms=["HS256"], 
                 audience="authenticated"
             )
